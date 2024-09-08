@@ -1,0 +1,88 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "demo mast3r",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "/opt/conda/envs/tracking/bin/python",
+            "program": "${workspaceFolder}/demo.py",
+            "args": [
+                //"--model_name", "MASt3R_ViTLarge_BaseDecoder_512_catmlpdpt_metric",
+                "--weights", "checkpoints/MASt3R_ViTLarge_BaseDecoder_512_catmlpdpt_metric.pth",
+            ],
+            "console": "integratedTerminal",
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "0"
+            }
+        },
+        {
+            "name": "demo dust3r",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "/opt/conda/envs/tracking/bin/python",
+            "program": "${workspaceFolder}/dust3r/demo.py",
+            "args": [
+                //"--model_name", "MASt3R_ViTLarge_BaseDecoder_512_catmlpdpt_metric",
+                "--weights", "dust3r/checkpoints/DUSt3R_ViTLarge_BaseDecoder_512_dpt.pth",
+            ],
+            "console": "integratedTerminal",
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "0"
+            }
+        },
+        {
+            "name": "test mast3r",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "/opt/conda/envs/tracking/bin/python",
+            "program": "${workspaceFolder}/test_mast3r.py",
+            "console": "integratedTerminal",
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "0, 1, 2, 3"
+            },
+            "justMyCode": false,
+        },
+        {
+            "name": "get simple data",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "/opt/conda/envs/tracking/bin/python",
+            "program": "${workspaceFolder}/get_simple_data.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+        },
+        {
+            "name": "show prediction tracks",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "/opt/conda/envs/tracking/bin/python",
+            "program": "${workspaceFolder}/show_tracks.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "--file_path", "/opt/data/private/tjy/mast3r/output/prediction.npz",
+                "--output_path", "/opt/data/private/tjy/mast3r/output/prediction.mp4",
+                "--if_prediction", "True",
+            ]
+        },
+        {
+            "name": "show raw tracks",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "/opt/conda/envs/tracking/bin/python",
+            "program": "${workspaceFolder}/show_tracks.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "--file_path", "/opt/data/private/tjy/mast3r/data/drivetrack_example_pairwise.npz",
+                "--output_path", "/opt/data/private/tjy/mast3r/output/drivetrack_example_pairwise.mp4",
+            ]
+        }
+    ]
+}
+
+// /opt/conda/envs/tracking/bin/python demo.py --model_name=MASt3R_ViTLarge_BaseDecoder_512_catmlpdpt_metric
