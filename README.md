@@ -1,3 +1,23 @@
+
+### Setup
+conda create -n mast3r python=3.11 cmake=3.14.0
+conda activate mast3r 
+pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+pip install -r requirements.txt
+pip install -r dust3r/requirements.txt
+pip install -r dust3r/requirements_optional.txt
+
+### Data
+#### /checkpoints
+wget https://download.europe.naverlabs.com/ComputerVision/MASt3R/MASt3R_ViTLarge_BaseDecoder_512_catmlpdpt_metric.pth -P checkpoints/
+
+
+#### /data
+
+#### output
+
+
+
 ![banner](assets/mast3r.jpg)
 
 Official implementation of `Grounding Image Matching in 3D with MASt3R`  
@@ -31,7 +51,7 @@ Official implementation of `Grounding Image Matching in 3D with MASt3R`
 - [License](#license)
 - [Get Started](#get-started)
   - [Installation](#installation)
-  - [Checkpoints](#checkpoints)
+  - [Checkpoints](#checkpoints-1)
   - [Interactive demo](#interactive-demo)
   - [Interactive demo with docker](#interactive-demo-with-docker)
 - [Usage](#usage)
@@ -40,7 +60,7 @@ Official implementation of `Grounding Image Matching in 3D with MASt3R`
   - [Demo](#demo)
   - [Our Hyperparameters](#our-hyperparameters)
 - [Visual Localization](#visual-localization)
-  - [Dataset Preparation](#dataset-preparation)
+  - [Dataset preparation](#dataset-preparation)
   - [Example Commands](#example-commands)
 
 ## License
