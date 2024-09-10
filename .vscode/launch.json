@@ -8,7 +8,7 @@
             "name": "demo mast3r",
             "type": "debugpy",
             "request": "launch",
-            "python": "/opt/conda/envs/tracking/bin/python",
+            "python": "/home/tjy/anaconda3/envs/mast3r/bin/python",
             "program": "${workspaceFolder}/demo.py",
             "args": [
                 //"--model_name", "MASt3R_ViTLarge_BaseDecoder_512_catmlpdpt_metric",
@@ -23,7 +23,7 @@
             "name": "demo dust3r",
             "type": "debugpy",
             "request": "launch",
-            "python": "/opt/conda/envs/tracking/bin/python",
+            "python": "/home/tjy/anaconda3/envs/mast3r/bin/python",
             "program": "${workspaceFolder}/dust3r/demo.py",
             "args": [
                 //"--model_name", "MASt3R_ViTLarge_BaseDecoder_512_catmlpdpt_metric",
@@ -38,34 +38,43 @@
             "name": "test mast3r",
             "type": "debugpy",
             "request": "launch",
-            "python": "/opt/conda/envs/tracking/bin/python",
+            "python": "/home/tjy/anaconda3/envs/mast3r/bin/python",
             "program": "${workspaceFolder}/test_mast3r.py",
             "console": "integratedTerminal",
             "env": {
                 "CUDA_VISIBLE_DEVICES": "0, 1, 2, 3"
             },
             "justMyCode": false,
+            "args": [
+                "--input_path", "/mnt/nas/share/home/tjy/mast3r_evaluate/data/Lite_release_recognition_GreenDecorationTall_seq031_6_simple.npz",
+                "--output_path", "/mnt/nas/share/home/tjy/mast3r_evaluate/output/prediction.npz",
+            ]
         },
         {
             "name": "get simple data",
             "type": "debugpy",
             "request": "launch",
-            "python": "/opt/conda/envs/tracking/bin/python",
+            "python": "/home/tjy/anaconda3/envs/mast3r/bin/python",
             "program": "${workspaceFolder}/get_simple_data.py",
             "console": "integratedTerminal",
             "justMyCode": false,
+            "args": [
+                "--input_path", "/mnt/nas/share/home/tjy/mast3r_evaluate/data/Lite_release_recognition_GreenDecorationTall_seq031_6.npz",
+                "--output_path", "/mnt/nas/share/home/tjy/mast3r_evaluate/data/Lite_release_recognition_GreenDecorationTall_seq031_6_simple.npz",
+                "--number", "10",
+            ]
         },
         {
             "name": "show prediction tracks",
             "type": "debugpy",
             "request": "launch",
-            "python": "/opt/conda/envs/tracking/bin/python",
+            "python": "/home/tjy/anaconda3/envs/mast3r/bin/python",
             "program": "${workspaceFolder}/show_tracks.py",
             "console": "integratedTerminal",
             "justMyCode": false,
             "args": [
-                "--file_path", "/opt/data/private/tjy/mast3r/output/prediction.npz",
-                "--output_path", "/opt/data/private/tjy/mast3r/output/prediction.mp4",
+                "--file_path", "/mnt/nas/share/home/tjy/mast3r_evaluate/output/prediction.npz",
+                "--output_path", "/mnt/nas/share/home/tjy/mast3r_evaluate/output/prediction.mp4",
                 "--if_prediction", "True",
             ]
         },
@@ -73,13 +82,13 @@
             "name": "show raw tracks",
             "type": "debugpy",
             "request": "launch",
-            "python": "/opt/conda/envs/tracking/bin/python",
+            "python": "/home/tjy/anaconda3/envs/mast3r/bin/python",
             "program": "${workspaceFolder}/show_tracks.py",
             "console": "integratedTerminal",
             "justMyCode": false,
             "args": [
-                "--file_path", "/opt/data/private/tjy/mast3r/data/drivetrack_example_pairwise.npz",
-                "--output_path", "/opt/data/private/tjy/mast3r/output/drivetrack_example_pairwise.mp4",
+                "--file_path", "/mnt/nas/share/home/tjy/mast3r_evaluate/data/Lite_release_recognition_GreenDecorationTall_seq031_6_simple.npz",
+                "--output_path", "/mnt/nas/share/home/tjy/mast3r_evaluate/output/Lite_release_recognition_GreenDecorationTall_seq031_6_simple.mp4",
             ]
         }
     ]
