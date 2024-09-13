@@ -31,20 +31,23 @@ def project_points_to_video_frame(camera_pov_points3d, camera_intrinsics, height
   u_d = u_d * f_u + c_u
   v_d = v_d * f_v + c_v
   
-  # if if_prediction:
-    # max_weight = u_d.max()
-    # min_weight = u_d.min()
-    # max_height = v_d.max()
-    # min_height = v_d.min()
-    # u_d = (u_d - min_weight) / (max_weight - min_weight) * width
-    # v_d = (v_d - min_height) / (max_height - min_height) * height
-
   # Mask of points that are in front of the camera and within image boundary
   masks = (camera_pov_points3d[..., 2] >= 1)
   masks = masks & (u_d >= 0) & (u_d < width) & (v_d >= 0) & (v_d < height)
   return np.stack([u_d, v_d], axis=-1), masks
 
-def plot_2d_tracks(video, points, visibles, infront_cameras=None, tracks_leave_trace=16, show_occ=False):
+def project_each_point_to_video_frame(camera_pov_points3d, camera_intrinsics, height, width):
+  u_d = camera_pov_points3d[..., 0] / (camera_pov_points3d[..., 2] + 1e-8)
+  v_d = camera_pov_points3d[..., 1] / (camera_pov_points3d[..., 2] + 1e-8)
+  
+  u_d = u_d * camera_intrinsics[:, :, 0] + camera_intrinsics[:, :, 2]
+  v_d = v_d * camera_intrinsics[:, :, 1] + camera_intrinsics[:, :, 3]
+  
+  masks = (camera_pov_points3d[..., 2] >= 1)
+  masks = masks & (u_d >= 0) & (u_d < width) & (v_d >= 0) & (v_d < height)
+  return np.stack([u_d, v_d], axis=-1), masks
+
+def plot_2d_tracks(video, points, visibles, infront_cameras=None, tracks_leave_trace=16, show_occ=False, draw_tracks = False):
   """Visualize 2D point trajectories."""
   num_frames, num_points = points.shape[:2]
 
@@ -63,31 +66,36 @@ def plot_2d_tracks(video, points, visibles, infront_cameras=None, tracks_leave_t
     frame = video[t].copy()
 
     # Draw tracks on the frame
-    line_tracks = points[max(0, t - tracks_leave_trace) : t + 1]
-    line_visibles = visibles[max(0, t - tracks_leave_trace) : t + 1]
-    line_infront_cameras = infront_cameras[max(0, t - tracks_leave_trace) : t + 1]
-    for s in range(line_tracks.shape[0] - 1):
-      img = frame.copy()
+    if draw_tracks:
+      line_tracks = points[max(0, t - tracks_leave_trace) : t + 1]
+      line_visibles = visibles[max(0, t - tracks_leave_trace) : t + 1]
+      line_infront_cameras = infront_cameras[max(0, t - tracks_leave_trace) : t + 1]
+      for s in range(line_tracks.shape[0] - 1):
+        img = frame.copy()
 
-      for i in range(num_points):
-        if line_visibles[s, i] and line_visibles[s + 1, i]:  # visible
-          x1, y1 = int(round(line_tracks[s, i, 0])), int(round(line_tracks[s, i, 1]))
-          x2, y2 = int(round(line_tracks[s + 1, i, 0])), int(round(line_tracks[s + 1, i, 1]))
-          cv2.line(frame, (x1, y1), (x2, y2), point_colors[i], 1, cv2.LINE_AA)
-        elif show_occ and line_infront_cameras[s, i] and line_infront_cameras[s + 1, i]:  # occluded
-          x1, y1 = int(round(line_tracks[s, i, 0])), int(round(line_tracks[s, i, 1]))
-          x2, y2 = int(round(line_tracks[s + 1, i, 0])), int(round(line_tracks[s + 1, i, 1]))
-          cv2.line(frame, (x1, y1), (x2, y2), point_colors[i], 1, cv2.LINE_AA)
+        for i in range(num_points):
+          if line_visibles[s, i] and line_visibles[s + 1, i]:  # visible
+            x1, y1 = int(round(line_tracks[s, i, 0])), int(round(line_tracks[s, i, 1]))
+            x2, y2 = int(round(line_tracks[s + 1, i, 0])), int(round(line_tracks[s + 1, i, 1]))
+            cv2.line(frame, (x1, y1), (x2, y2), point_colors[i], 1, cv2.LINE_AA)
+          elif show_occ and line_infront_cameras[s, i] and line_infront_cameras[s + 1, i]:  # occluded
+            x1, y1 = int(round(line_tracks[s, i, 0])), int(round(line_tracks[s, i, 1]))
+            x2, y2 = int(round(line_tracks[s + 1, i, 0])), int(round(line_tracks[s + 1, i, 1]))
+            cv2.line(frame, (x1, y1), (x2, y2), point_colors[i], 1, cv2.LINE_AA)
 
-      alpha = (s + 1) / (line_tracks.shape[0] - 1)
-      frame = cv2.addWeighted(frame, alpha, img, 1 - alpha, 0)
+        alpha = (s + 1) / (line_tracks.shape[0] - 1)
+        frame = cv2.addWeighted(frame, alpha, img, 1 - alpha, 0)
 
     # Draw end points on the frame
     for i in range(num_points):
       if visibles[t, i]:  # visible
+        if(np.isnan(points[t, i, 0]) or np.isnan(points[t, i, 1])):
+          continue
         x, y = int(round(points[t, i, 0])), int(round(points[t, i, 1]))
         cv2.circle(frame, (x, y), 2, point_colors[i], -1)
       elif show_occ and infront_cameras[t, i]:  # occluded
+        if(np.isnan(points[t, i, 0]) or np.isnan(points[t, i, 1])):
+          continue
         x, y = int(round(points[t, i, 0])), int(round(points[t, i, 1]))
         cv2.circle(frame, (x, y), 2, point_colors[i], 1)
 

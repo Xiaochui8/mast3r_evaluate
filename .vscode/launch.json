@@ -42,11 +42,11 @@
             "program": "${workspaceFolder}/test_mast3r.py",
             "console": "integratedTerminal",
             "env": {
-                "CUDA_VISIBLE_DEVICES": "0, 1, 2, 3"
+                "CUDA_VISIBLE_DEVICES": "4"
             },
             "justMyCode": false,
             "args": [
-                "--input_path", "/mnt/nas/share/home/tjy/mast3r_evaluate/data/Lite_release_recognition_GreenDecorationTall_seq031_6_simple.npz",
+                "--input_path", "/mnt/nas/share/home/tjy/mast3r_evaluate/evaluate_data/tapvid_datasets/drivetrack/tapvid3d_10235335145367115211_5420_000_5440_000_2_4iry-kJsWTWnjLdVm-S8XA.npz",
                 "--output_path", "/mnt/nas/share/home/tjy/mast3r_evaluate/output/prediction.npz",
             ]
         },
@@ -59,8 +59,8 @@
             "console": "integratedTerminal",
             "justMyCode": false,
             "args": [
-                "--input_path", "/mnt/nas/share/home/tjy/mast3r_evaluate/data/Lite_release_recognition_GreenDecorationTall_seq031_6.npz",
-                "--output_path", "/mnt/nas/share/home/tjy/mast3r_evaluate/data/Lite_release_recognition_GreenDecorationTall_seq031_6_simple.npz",
+                "--input_path", "/mnt/nas/share/home/tjy/mast3r_evaluate/data/drivetrack_example.npz",
+                "--output_path", "/mnt/nas/share/home/tjy/mast3r_evaluate/data/drivetrack_example_simple.npz",
                 "--number", "10",
             ]
         },
@@ -87,8 +87,24 @@
             "console": "integratedTerminal",
             "justMyCode": false,
             "args": [
-                "--file_path", "/mnt/nas/share/home/tjy/mast3r_evaluate/data/Lite_release_recognition_GreenDecorationTall_seq031_6_simple.npz",
-                "--output_path", "/mnt/nas/share/home/tjy/mast3r_evaluate/output/Lite_release_recognition_GreenDecorationTall_seq031_6_simple.mp4",
+                "--file_path", "/mnt/nas/share/home/tjy/mast3r_evaluate/data/drivetrack_example_simple.npz",
+                "--output_path", "/mnt/nas/share/home/tjy/mast3r_evaluate/output/drivetrack_example_simple.mp4",
+            ]
+        },
+        {
+            "name": "run mast3r evaluate",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "/home/tjy/anaconda3/envs/mast3r/bin/python",
+            "program": "${workspaceFolder}/run_mast3r.py",
+            "console": "integratedTerminal",
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "0"
+            },
+            "justMyCode": false,
+            "args": [
+                "--input_path", "/mnt/nas/share/home/tjy/mast3r_evaluate/evaluate_data/tapvid_datasets/drivetrack/",
+                "--output_path", "/mnt/nas/share/home/tjy/mast3r_evaluate/evaluate_data/model_output/",
             ]
         }
     ]

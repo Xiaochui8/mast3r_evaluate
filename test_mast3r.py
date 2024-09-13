@@ -22,8 +22,6 @@ import argparse
 
 ImgNorm = tvf.Compose([tvf.ToTensor(), tvf.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
 
-example_image = PIL.Image.open('data/mouse1.jpg').convert('RGB')
-example_image_pairs = [tuple(load_images(['data/mouse1.jpg', 'data/mouse2.jpg'], size=512))]
 
 def get_images(images):
     imgs = []
@@ -107,10 +105,9 @@ def _resize_pil_image(img, long_edge_size):
     new_size = tuple(int(round(x*long_edge_size/S)) for x in img.size)
     return img.resize(new_size, interp)
 
-def get_image_pairs(images_jpeg_bytes, query_idx, size=512, square_ok=False):
+def get_image_pairs(images_jpeg_bytes, query_idx, size=512, save_imgs=False, factor = 16):
     imgs = []
-    img_pairs = []
-    img_pairs_idxs = []
+    img_pairs = np.empty((len(images_jpeg_bytes), len(query_idx)), dtype=tuple)
     idx = 0
     origin_shape = ()
     current_shape = ()
@@ -118,29 +115,28 @@ def get_image_pairs(images_jpeg_bytes, query_idx, size=512, square_ok=False):
         idx += 1
         img = Image.open(io.BytesIO(image_jpeg_bytes)).convert('RGB')
         W1, H1 = img.size
-        img = img.resize((512, 336))
-        # if size == 224:
-        #     # resize short side to 224 (then crop)
-        #     img = _resize_pil_image(img, round(size * max(W1/H1, H1/W1)))
-        # else:
-        #     # resize long side to 512
-        #     img = _resize_pil_image(img, size)
-        W, H = img.size
-        # cx, cy = W//2, H//2
-        # if size == 224:
-        #     half = min(cx, cy)
-        #     img = img.crop((cx-half, cy-half, cx+half, cy+half))
-        # else:
-        #     halfw, halfh = ((2*cx)//16)*8, ((2*cy)//16)*8
-        #     if not (square_ok) and W == H:
-        #         halfh = 3*halfw/4
-        #     img = img.crop((cx-halfw, cy-halfh, cx+halfw, cy+halfh))
+        
+        # 找到最长边
+        max_edge = max(W1, H1)
+        
+        # 计算缩放比例
+        scale = size / max_edge
+        
+        # 根据比例缩放两边
+        W2 = int(W1 * scale)
+        H2 = int(H1 * scale)
+        
+        # 将宽高调整为factor的倍数
+        W2 = (W2 ) // factor * factor
+        H2 = (H2 ) // factor * factor
+        
+        img = img.resize((W2, H2))
 
-        W2, H2 = img.size
         imgs.append(dict(img=ImgNorm(img)[None], true_shape=np.int32(
             [img.size[::-1]]), idx=len(imgs), instance=str(len(imgs))))
         
-        img.save('output/image' + str(idx) + '.png')
+        if save_imgs:
+            img.save('output/image' + str(idx) + '.png')
         
         if(idx == 1):
             origin_shape = (W1, H1)
@@ -148,15 +144,46 @@ def get_image_pairs(images_jpeg_bytes, query_idx, size=512, square_ok=False):
     
     # 每一个pair --- (任意时刻的frame, 需要track的frame的indx)
     for i in range(len(imgs)):
-        for j in query_idx:
-            img_pairs.append(tuple([imgs[i], imgs[j]]))
-            img_pairs_idxs.append((i, j))
+        for j in range(len(query_idx)):
+            img_pairs[i][j] = tuple([imgs[i], imgs[j]])
     
-    return img_pairs, img_pairs_idxs, origin_shape, current_shape, len(imgs)
+    return img_pairs, origin_shape, current_shape, len(imgs)
+
+def interpolate_at_xy(pts, x, y):
+    """
+    在 (x, y) 位置对 shape 为 (n, h, w, 3) 的张量进行插值
+    
+    参数:
+    pts: 形状为 (n, h, w, 3) 的张量
+    x, y: 单个插值点，分别是 x 和 y 坐标
+    
+    返回:
+    形状为 (n, 3) 的插值结果
+    """
+    n, h, w, c = pts.shape
+    
+    # 将坐标归一化到 [-1, 1] 区间
+    norm_x = 2.0 * x / (w - 1) - 1.0
+    norm_y = 2.0 * y / (h - 1) - 1.0
+    
+    # 创建归一化的坐标网格, shape为 (1, 1, 2)
+    norm_coords = torch.stack([torch.tensor(norm_x), torch.tensor(norm_y)], dim=-1).to(pts.device).to(torch.float32)
+    
+    # 调整 pts 形状为 (n, 3, h, w) 以适配 grid_sample
+    pts = pts.permute(0, 3, 1, 2)  # 转换为 (n, 3, h, w)
+    
+    # norm_coords 扩展为 (n, 1, #query_xy, 2)
+    norm_coords = norm_coords.expand(n, 1, -1, -1)
+    # 使用 grid_sample 进行插值, 插值结果 shape 为 (n, 3, 1, 1)
+    interpolated_vals = F.grid_sample(pts, norm_coords, mode='bilinear', align_corners=True)
+    
+    # 去掉多余的维度，返回形状为 (n, 3) 的结果
+    return interpolated_vals.squeeze(-2)
 
 def check_mast3r_output(input_path, output_path):
-    images_ = load_images(['dust3r/croco/assets/Chateau1.png', 'dust3r/croco/assets/Chateau2.png'], size=512)
-    image_pairs_ = [tuple(images_)]
+    device = 'cuda'
+    weights_path = "checkpoints/MASt3R_ViTLarge_BaseDecoder_512_catmlpdpt_metric.pth"
+    model = AsymmetricMASt3R.from_pretrained(weights_path).to(device)
     
     with open(input_path, 'rb') as in_f:
         in_npz = np.load(in_f, allow_pickle=True)
@@ -167,131 +194,61 @@ def check_mast3r_output(input_path, output_path):
         intrinsics_params = in_npz['fx_fy_cx_cy']
         gt_tracks = in_npz['tracks_XYZ']
     
-    query_idx = list(set(int(idx) for idx in queries_xyt[:, 2]))
+    query_time = queries_xyt[:, 2] # from indx to time
+    query_idx = list(set(int(idx) for idx in queries_xyt[:, 2])) # possible query time
     
-    image_pairs, image_pairs_idxs, origin_shape, current_shape, t = get_image_pairs(images_jpeg_bytes, query_idx)
-    
-    # intrinsics_params 需要改变
-    # intrinsics_params[0] = intrinsics_params[0] / current_shape[0] * origin_shape[0]
-    # intrinsics_params[1] = intrinsics_params[1] / current_shape[1] * origin_shape[1]
-    
-    device = 'cuda'
-    schedule = 'cosine'
-    lr = 0.01
-    niter = 300
+    image_pairs, origin_shape, current_shape, t = get_image_pairs(images_jpeg_bytes, query_idx)
 
-    weights_path = "checkpoints/MASt3R_ViTLarge_BaseDecoder_512_catmlpdpt_metric.pth"
-    # you can put the path to a local checkpoint in model_name if needed
-    model = AsymmetricMASt3R.from_pretrained(weights_path).to(device)
     
-    output = inference(image_pairs, model, device, batch_size=1, verbose=True)
-
-    # at this stage, you have the raw dust3r predictions
-    view1, pred1 = output['view1'], output['pred1']
-    view2, pred2 = output['view2'], output['pred2']
     
     # turn to the data for TAPVid3D
     prediction_tracks_xyz = np.zeros_like(tracks_xyz)
     prediction_visibles = np.zeros_like(visibles)
-    
-    pts = pred2['pts3d_in_other_view'] # t * #query_frames, h, w, 3
-    pts = pts.view(t, len(query_idx), current_shape[1], current_shape[0], 3)
-    conf = pred2['conf'].view(t, len(query_idx), current_shape[1], current_shape[0])
-    
-    
-    for i in tqdm.trange(queries_xyt.shape[0]):
-        time = int(queries_xyt[i, 2])
-        # TODO: x,y是time frame上的坐标，而不是任意帧上的坐标，得找到对应的点才行
-        x, y = queries_xyt[i, 0] / origin_shape[0] * current_shape[0], queries_xyt[i, 1] / origin_shape[1] * current_shape[1]
-        if x < 0 or x >= current_shape[0] or y < 0 or y >= current_shape[1]:
-            continue
-        x0 = np.floor(x).astype(int)
-        x1 = min(x0 + 1, current_shape[0] - 1)
-        y0 = np.floor(y).astype(int)
-        y1 = min(y0 + 1, current_shape[1] - 1)
-
-        
-
-        # 获取四个相邻点的值
-        Q_pts_11 = pts[:, query_idx.index(time), y0, x0]
-        Q_pts_21 = pts[:, query_idx.index(time), y0, x1]
-        Q_pts_12 = pts[:, query_idx.index(time), y1, x0]
-        Q_pts_22 = pts[:, query_idx.index(time), y1, x1]
-        
-        Q_conf_11 = conf[:, query_idx.index(time), y0, x0]
-        Q_conf_21 = conf[:, query_idx.index(time), y0, x1]
-        Q_conf_12 = conf[:, query_idx.index(time), y1, x0]
-        Q_conf_22 = conf[:, query_idx.index(time), y1, x1]
-
-        # 计算插值权重
-        wx = x - x0
-        wy = y - y0
-
-        # 双线性插值公式
-        prediction_tracks_xyz[:, i] = (
-            Q_pts_11 * (1 - wx) * (1 - wy) +
-            Q_pts_21 * wx * (1 - wy) +
-            Q_pts_12 * (1 - wx) * wy +
-            Q_pts_22 * wx * wy
-        )
-        # TODO:confidence的计算
-        prediction_visibles[:, i] = (
-            Q_conf_11 * (1 - wx) * (1 - wy) +
-            Q_conf_21 * wx * (1 - wy) +
-            Q_conf_12 * (1 - wx) * wy +
-            Q_conf_22 * wx * wy
-        )
-                               
-    # pts = pts.reshape(pts.shape[0], -1, pts.shape[-1]).numpy()
-    # pred_norms = np.sqrt(
-    #   np.maximum(1e-12, np.sum(np.square(pts), axis=-1))
-    # )
-    # gt_norms = np.sqrt(np.maximum(1e-12, np.sum(np.square(gt_tracks), axis=-1)))     
-    # scale_factor = np.nanmean(
-    #       gt_norms, axis=(-2, -1), keepdims=True
-    #   ) / np.nanmean(pred_norms, axis=(-2, -1), keepdims=True)
-    
-    
-    # gt_xy_norms = np.sqrt(np.maximum(1e-12, np.sum(np.square(gt_tracks[:, :, :2]), axis=-1)))
-    # gt_z_norms = np.sqrt(np.maximum(1e-12, np.sum(np.square(gt_tracks[:, :, 2:]), axis=-1)))
-    # pre_xy_norms = np.sqrt(np.maximum(1e-12, np.sum(np.square(pts[:, :, :2]), axis=-1)))
-    # pre_z_norms = np.sqrt(np.maximum(1e-12, np.sum(np.square(pts[:, :, 2:]), axis=-1)))
-    # gt_xy_div_z = np.nanmean(gt_xy_norms , axis=(-2, -1)) / np.nanmean(gt_z_norms, axis=(-2, -1))
-    # pre_xy_div_z = np.nanmean(pre_xy_norms , axis=(-2, -1)) / np.nanmean(pre_z_norms, axis=(-2, -1))
-    # scale_factor = gt_xy_div_z / pre_xy_div_z
-    # prediction_tracks_xyz[:, :,0:2] *= scale_factor 
-    
-    # 计算mast3r应有的相机内参
+    total_fx, total_fy = 0, 0
     cx, cy = current_shape[0] / 2, current_shape[1] / 2
-    # x_coords, y_coords = np.meshgrid(np.arange(current_shape[0]), np.arange(current_shape[1])) 
-    # xy_coords = np.stack([y_coords, x_coords], axis=-1) # W, H
-    # u_d = pts[:, :, :, :, 0] / (pts[:, :, :, :, 2] + 1e-8)
-    # v_d = pts[:, :, :, :, 1] / (pts[:, :, :, :, 2] + 1e-8)
-    # u_d = u_d[0][0]
-    # v_d = v_d[0][0]
-    # fx = ((y_coords - cx) / u_d).mean()
-    # fy = ((x_coords - cy) / v_d).mean()  
+    x_coords, y_coords = np.meshgrid(np.arange(current_shape[0]), np.arange(current_shape[1]), indexing='xy')  
     
-    fx = 0
-    fy = 0
-    for x in range(current_shape[0]):
-        for y in range(current_shape[1]):
-            fx += (x + 1 - cx) / (pts[0, 0, y, x, 0] / (pts[0, 0, y, x, 2] + 1e-8))
-            fy += (y + 1 - cy) / (pts[0, 0, y, x, 1] / (pts[0, 0, y, x, 2] + 1e-8))
-    
-    fx /= x*y
-    fy /= x*y
-    
+    for current_query_idx in tqdm.trange(len(query_idx)):
+        current_query_time = query_idx[current_query_idx]
+        output = inference(list(image_pairs[:, current_query_idx]), model, device, batch_size=32, verbose=False)
+
+        # at this stage, you have the raw dust3r predictions
+        view1, pred1 = output['view1'], output['pred1']
+        view2, pred2 = output['view2'], output['pred2']
+        
+        pts = pred2['pts3d_in_other_view'] # t * #query_frames, h, w, 3
+        pts = pts.view(t, current_shape[1], current_shape[0], 3)
+        pts2 = pred1['pts3d'].view(t, current_shape[1], current_shape[0], 3)
+        conf = pred2['conf'].view(t, current_shape[1], current_shape[0])
+        
+        
+        
+        # x,y是time frame上的坐标，而不是任意帧上的坐标，得找到对应的点才行
+        for i in range(queries_xyt.shape[0]):
+            mask = query_time == current_query_time
+            x, y = queries_xyt[mask, 0] / origin_shape[0] * current_shape[0], queries_xyt[mask, 1] / origin_shape[1] * current_shape[1]
+            prediction_tracks_xyz[:, mask] = interpolate_at_xy(pts, x, y).permute(0, 2, 1)
+            prediction_visibles[:, mask] = interpolate_at_xy(conf.unsqueeze(-1), x, y).permute(0, 2, 1).squeeze(-1)
+
+
+        for i in range(pts2.shape[0]):
+            fx = (x_coords + 1 - cx) / (pts2[i, :, :, 0] / (pts2[i, :, :, 2] + 1e-8))
+            fy = (y_coords + 1 - cy) / (pts2[i, :, :, 1] / (pts2[i, :, :, 2] + 1e-8))
+            total_fx += fx.nanmean().float() 
+            total_fy += fy.nanmean().float()
+                
+                    
     intrinsics_params = [
-        fx * origin_shape[0] / current_shape[0],
-        fy * origin_shape[1] / current_shape[1],
-        cx * origin_shape[0] / current_shape[0],
-        cy * origin_shape[1] / current_shape[1],
-                        ]
-    
-    
-    
-    
+                    total_fx /(t * len(query_idx)) * origin_shape[0] / current_shape[0],
+                    total_fy /(t * len(query_idx)) * origin_shape[1] / current_shape[1],
+                    cx * origin_shape[0] / current_shape[0],
+                    cy * origin_shape[1] / current_shape[1],
+                ]
+        
+    gt_tracks_norm_factor = np.median(np.linalg.norm(gt_tracks, axis = -1),axis = -1)
+    tracks_norm_factor = np.median(np.linalg.norm(prediction_tracks_xyz, axis = -1),axis = -1)
+    prediction_tracks_xyz = prediction_tracks_xyz * gt_tracks_norm_factor.reshape(-1, 1, 1) / tracks_norm_factor.reshape(-1, 1, 1)    
+
     output = {
         'tracks_XYZ': prediction_tracks_xyz,
         'visibility': visibles,

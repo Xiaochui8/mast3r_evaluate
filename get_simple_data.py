@@ -112,6 +112,8 @@ def get_pairwise_data_gt(number, input_path, output_path, start_at_frame0 = Fals
         if_in_indxs = np.isin(queries_xyt[:, 2], indxs)
         queries_xyt = queries_xyt[if_in_indxs]
         queries_xyt[:, 2] = [indxs.index(i) for i in queries_xyt[:, 2]]
+        tracks_xyz = tracks_xyz[:, if_in_indxs]
+        visibles = visibles[:, if_in_indxs]
     
     
     visibles = visibles[indxs]

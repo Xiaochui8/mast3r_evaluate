@@ -132,3 +132,4 @@ dmypy.json
 # data/
 checkpoints/
 output/
+evaluate_data/
