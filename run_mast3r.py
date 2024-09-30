@@ -25,8 +25,7 @@ ImgNorm = tvf.Compose([tvf.ToTensor(), tvf.Normalize((0.5, 0.5, 0.5), (0.5, 0.5,
 
 def get_image_pairs(images_jpeg_bytes, query_idx, size=512, save_imgs=False, factor = 16):
     imgs = []
-    img_pairs = []
-    img_pairs_idxs = []
+    img_pairs = np.empty((len(images_jpeg_bytes), len(query_idx)), dtype=tuple)
     idx = 0
     origin_shape = ()
     current_shape = ()
@@ -63,11 +62,10 @@ def get_image_pairs(images_jpeg_bytes, query_idx, size=512, save_imgs=False, fac
     
     # 每一个pair --- (任意时刻的frame, 需要track的frame的indx)
     for i in range(len(imgs)):
-        for j in query_idx:
-            img_pairs.append(tuple([imgs[i], imgs[j]]))
-            img_pairs_idxs.append((i, j))
+        for j in range(len(query_idx)):
+            img_pairs[i][j] = tuple([imgs[i], imgs[j]])
     
-    return img_pairs, img_pairs_idxs, origin_shape, current_shape, len(imgs)
+    return img_pairs, origin_shape, current_shape, len(imgs)
 
 def interpolate_at_xy(pts, x, y):
     """
@@ -87,17 +85,18 @@ def interpolate_at_xy(pts, x, y):
     norm_y = 2.0 * y / (h - 1) - 1.0
     
     # 创建归一化的坐标网格, shape为 (1, 1, 2)
-    norm_coords = torch.tensor([norm_x, norm_y], dtype=torch.float32, device=pts.device)
+    norm_coords = torch.stack([torch.tensor(norm_x), torch.tensor(norm_y)], dim=-1).to(pts.device).to(torch.float32)
     
     # 调整 pts 形状为 (n, 3, h, w) 以适配 grid_sample
     pts = pts.permute(0, 3, 1, 2)  # 转换为 (n, 3, h, w)
     
+    # norm_coords 扩展为 (n, 1, #query_xy, 2)
+    norm_coords = norm_coords.expand(n, 1, -1, -1)
     # 使用 grid_sample 进行插值, 插值结果 shape 为 (n, 3, 1, 1)
-    norm_coords = norm_coords.expand(n, 1, 1, -1)
     interpolated_vals = F.grid_sample(pts, norm_coords, mode='bilinear', align_corners=True)
     
     # 去掉多余的维度，返回形状为 (n, 3) 的结果
-    return interpolated_vals.squeeze(-1, -2)
+    return interpolated_vals.squeeze(-2)
 
 
 
@@ -133,70 +132,60 @@ def get_mast3r_output_single_file(model, input_path, output_path, device = 'cuda
         intrinsics_params = in_npz['fx_fy_cx_cy']
         gt_tracks = in_npz['tracks_XYZ']
     
-    query_idx = list(set(int(idx) for idx in queries_xyt[:, 2]))
+    query_time = queries_xyt[:, 2] # from indx to time
+    query_idx = list(set(int(idx) for idx in queries_xyt[:, 2])) # possible query time
     
-    image_pairs, image_pairs_idxs, origin_shape, current_shape, t = get_image_pairs(images_jpeg_bytes, query_idx)
-    
-    
-
+    image_pairs, origin_shape, current_shape, t = get_image_pairs(images_jpeg_bytes, query_idx)
 
     
-    
-    output = inference(image_pairs, model, device, batch_size=1, verbose=True)
-
-    # at this stage, you have the raw dust3r predictions
-    view1, pred1 = output['view1'], output['pred1']
-    view2, pred2 = output['view2'], output['pred2']
     
     # turn to the data for TAPVid3D
     prediction_tracks_xyz = np.zeros_like(tracks_xyz)
     prediction_visibles = np.zeros_like(visibles)
-    
-    
-    pts = pred2['pts3d_in_other_view'] # t * #query_frames, h, w, 3
-    pts = pts.view(t, len(query_idx), current_shape[1], current_shape[0], 3)
-    pts2 = pred1['pts3d'].view(t, len(query_idx), current_shape[1], current_shape[0], 3)
-    conf = pred2['conf'].view(t, len(query_idx), current_shape[1], current_shape[0])
-    
-    
-    for i in tqdm.trange(queries_xyt.shape[0]):
-        time = int(queries_xyt[i, 2])
-        # TODO: x,y是time frame上的坐标，而不是任意帧上的坐标，得找到对应的点才行
-        x, y = queries_xyt[i, 0] / origin_shape[0] * current_shape[0], queries_xyt[i, 1] / origin_shape[1] * current_shape[1]
-        if x < 0 or x >= current_shape[0] or y < 0 or y >= current_shape[1]:
-            print('out of range')
-            continue
-        temp_query_time = query_idx.index(time)
-        prediction_tracks_xyz[:, i] = interpolate_at_xy(pts[:, temp_query_time], x, y)
-        prediction_visibles[:, i] = interpolate_at_xy(conf.unsqueeze(-1)[:, temp_query_time], x, y).squeeze(-1)
-
-        
-
-    
+    total_fx, total_fy = 0, 0
     cx, cy = current_shape[0] / 2, current_shape[1] / 2
     x_coords, y_coords = np.meshgrid(np.arange(current_shape[0]), np.arange(current_shape[1]), indexing='xy')  
     
-    total_fx, total_fy = 0, 0
-    for i in range(pts2.shape[0]):
-        for j in range(pts2.shape[1]):
-            fx = (x_coords + 1 - cx) / (pts2[i, j, :, :, 0] / (pts2[i, j, :, :, 2] + 1e-8))
-            fy = (y_coords + 1 - cy) / (pts2[i, j, :, :, 1] / (pts2[i, j, :, :, 2] + 1e-8))
-            total_fx += fx.mean().float()
-            total_fy += fy.mean().float()
-            
+    for current_query_idx in tqdm.trange(len(query_idx)):
+        current_query_time = query_idx[current_query_idx]
+        output = inference(list(image_pairs[:, current_query_idx]), model, device, batch_size=32, verbose=False)
+
+        # at this stage, you have the raw dust3r predictions
+        view1, pred1 = output['view1'], output['pred1']
+        view2, pred2 = output['view2'], output['pred2']
+        
+        pts = pred2['pts3d_in_other_view'] # t * #query_frames, h, w, 3
+        pts = pts.view(t, current_shape[1], current_shape[0], 3)
+        pts2 = pred1['pts3d'].view(t, current_shape[1], current_shape[0], 3)
+        conf = pred2['conf'].view(t, current_shape[1], current_shape[0])
+        
+        
+        
+        # x,y是time frame上的坐标，而不是任意帧上的坐标，得找到对应的点才行
+        for i in range(queries_xyt.shape[0]):
+            mask = query_time == current_query_time
+            x, y = queries_xyt[mask, 0] / origin_shape[0] * current_shape[0], queries_xyt[mask, 1] / origin_shape[1] * current_shape[1]
+            prediction_tracks_xyz[:, mask] = interpolate_at_xy(pts, x, y).permute(0, 2, 1)
+            prediction_visibles[:, mask] = interpolate_at_xy(conf.unsqueeze(-1), x, y).permute(0, 2, 1).squeeze(-1)
+
+
+        for i in range(pts2.shape[0]):
+            fx = (x_coords + 1 - cx) / (pts2[i, :, :, 0] / (pts2[i, :, :, 2] + 1e-8))
+            fy = (y_coords + 1 - cy) / (pts2[i, :, :, 1] / (pts2[i, :, :, 2] + 1e-8))
+            total_fx += fx.nanmedian().float() 
+            total_fy += fy.nanmedian().float()
                 
+                    
     intrinsics_params = [
-                    total_fx /(pts2.shape[0] * pts2.shape[1]) * origin_shape[0] / current_shape[0],
-                    total_fy /(pts2.shape[0] * pts2.shape[1]) * origin_shape[1] / current_shape[1],
+                    total_fx /(t * len(query_idx)) * origin_shape[0] / current_shape[0],
+                    total_fy /(t * len(query_idx)) * origin_shape[1] / current_shape[1],
                     cx * origin_shape[0] / current_shape[0],
                     cy * origin_shape[1] / current_shape[1],
                 ]
-    
+        
     gt_tracks_norm_factor = np.median(np.linalg.norm(gt_tracks, axis = -1),axis = -1)
     tracks_norm_factor = np.median(np.linalg.norm(prediction_tracks_xyz, axis = -1),axis = -1)
-    prediction_tracks_xyz = prediction_tracks_xyz * gt_tracks_norm_factor.reshape(-1, 1, 1) / tracks_norm_factor.reshape(-1, 1, 1)
-    
-    
+    prediction_tracks_xyz = prediction_tracks_xyz * gt_tracks_norm_factor.reshape(-1, 1, 1) / tracks_norm_factor.reshape(-1, 1, 1)    
 
     output = {
         'tracks_XYZ': prediction_tracks_xyz,
@@ -213,8 +202,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--input_path', type=str, default='./data/drivetrack_example.npz')
     parser.add_argument('--output_path', type=str, default='./output/prediction.npz')
+    parser.add_argument('--device', type=str, default='cpu')
     args = parser.parse_args()
     
-    get_mast3r_output_single_folder(args.input_path, args.output_path)
+    get_mast3r_output_single_folder(args.input_path, args.output_path, args.device)
 
     

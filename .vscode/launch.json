@@ -42,11 +42,11 @@
             "program": "${workspaceFolder}/test_mast3r.py",
             "console": "integratedTerminal",
             "env": {
-                "CUDA_VISIBLE_DEVICES": "4"
+                "CUDA_VISIBLE_DEVICES": "6"
             },
             "justMyCode": false,
             "args": [
-                "--input_path", "/mnt/nas/share/home/tjy/mast3r_evaluate/evaluate_data/tapvid_datasets/drivetrack/tapvid3d_10235335145367115211_5420_000_5440_000_2_4iry-kJsWTWnjLdVm-S8XA.npz",
+                "--input_path", "/mnt/nas/share/home/tjy/mast3r_evaluate/evaluate_data/tapvid_datasets/drivetrack/tapvid3d_33101359476901423_6720_910_6740_910_3_JNFn13if2djGYt0wQ682cw.npz",
                 "--output_path", "/mnt/nas/share/home/tjy/mast3r_evaluate/output/prediction.npz",
             ]
         },
@@ -75,7 +75,19 @@
             "args": [
                 "--file_path", "/mnt/nas/share/home/tjy/mast3r_evaluate/output/prediction.npz",
                 "--output_path", "/mnt/nas/share/home/tjy/mast3r_evaluate/output/prediction.mp4",
-                "--if_prediction", "True",
+            ]
+        },
+        {
+            "name": "show tracks",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "/home/tjy/anaconda3/envs/mast3r/bin/python",
+            "program": "${workspaceFolder}/show_tracks.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "--file_path", "tapvid3d_1022527355599519580_4866_960_4886_960_2_L58RM2TH_i-3sYbjr6JjQQ",
+                "--pairwise", "True",
             ]
         },
         {
@@ -92,20 +104,55 @@
             ]
         },
         {
+            "name": "show tracks in folder",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "/home/tjy/anaconda3/envs/mast3r/bin/python",
+            "program": "${workspaceFolder}/show_tracks.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "--folder", "True",
+            ]
+        },
+        {
             "name": "run mast3r evaluate",
             "type": "debugpy",
             "request": "launch",
             "python": "/home/tjy/anaconda3/envs/mast3r/bin/python",
             "program": "${workspaceFolder}/run_mast3r.py",
             "console": "integratedTerminal",
-            "env": {
-                "CUDA_VISIBLE_DEVICES": "0"
-            },
             "justMyCode": false,
             "args": [
                 "--input_path", "/mnt/nas/share/home/tjy/mast3r_evaluate/evaluate_data/tapvid_datasets/drivetrack/",
-                "--output_path", "/mnt/nas/share/home/tjy/mast3r_evaluate/evaluate_data/model_output/",
+                "--output_path", "/mnt/nas/share/home/tjy/mast3r_evaluate/evaluate_data/model_output/drivetrack/",
+                "--device", "cuda:4",
             ]
+        },
+        {
+            "name": "evaluate mast3r_output",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "/home/tjy/anaconda3/envs/mast3r/bin/python",
+            "program": "${workspaceFolder}/evaluate_model.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "--tapvid3d_dir", "/mnt/nas/share/home/tjy/mast3r_evaluate/evaluate_data/model_output/",
+                "--tapvid3d_predictions", "/mnt/nas/share/home/tjy/mast3r_evaluate/evaluate_data/tapvid_datasets/",
+                "--use_minival", "True",
+                "--data_sources_to_evaluate", "drivetrack",
+            ]
+        },
+        {
+            "name": "test import",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "/home/tjy/anaconda3/envs/mast3r/bin/python",
+            "program": "${workspaceFolder}/test_import.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+        
         }
     ]
 }

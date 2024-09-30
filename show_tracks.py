@@ -19,7 +19,7 @@ import flow_vis
 import scenepic as sp
 import argparse
 
-if_prediction = False
+
 
 def project_points_to_video_frame(camera_pov_points3d, camera_intrinsics, height, width):
   """Project 3d points to 2d image plane."""
@@ -89,12 +89,12 @@ def plot_2d_tracks(video, points, visibles, infront_cameras=None, tracks_leave_t
     # Draw end points on the frame
     for i in range(num_points):
       if visibles[t, i]:  # visible
-        if(np.isnan(points[t, i, 0]) or np.isnan(points[t, i, 1])):
+        if(np.isnan(points[t, i, 0]) or np.isnan(points[t, i, 1]) or np.isinf(points[t, i, 0]) or np.isinf(points[t, i, 1])):
           continue
         x, y = int(round(points[t, i, 0])), int(round(points[t, i, 1]))
         cv2.circle(frame, (x, y), 2, point_colors[i], -1)
       elif show_occ and infront_cameras[t, i]:  # occluded
-        if(np.isnan(points[t, i, 0]) or np.isnan(points[t, i, 1])):
+        if(np.isnan(points[t, i, 0]) or np.isnan(points[t, i, 1]) or np.isinf(points[t, i, 0]) or np.isinf(points[t, i, 1])):
           continue
         x, y = int(round(points[t, i, 0])), int(round(points[t, i, 1]))
         cv2.circle(frame, (x, y), 2, point_colors[i], 1)
@@ -326,7 +326,34 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Visualize tracks from a dataset example file')
     parser.add_argument('--file_path', type = str)
     parser.add_argument('--output_path', type = str)
-    parser.add_argument('--if_prediction', type = str, default=False)
+    parser.add_argument('--pairwise', type = str, default=False)
+    parser.add_argument('--folder', type = str, default=False)
     args = parser.parse_args()
-    if_prediction = args.if_prediction
-    show_tracks(args.file_path, args.output_path)
+    
+   
+      
+    if args.pairwise:
+      model_path = "/mnt/nas/share/home/tjy/mast3r_evaluate/evaluate_data/model_output/drivetrack/"
+      gt_path = "/mnt/nas/share/home/tjy/mast3r_evaluate/evaluate_data/tapvid_datasets/drivetrack/"
+      output_path = "/mnt/nas/share/home/tjy/mast3r_evaluate/evaluate_data/tracks/"
+      show_tracks(os.path.join(model_path, args.file_path + '.npz'), os.path.join(output_path, "model_" + args.file_path + '.mp4'))
+      show_tracks(os.path.join(gt_path, args.file_path + '.npz'), os.path.join(output_path, "gt_" + args.file_path + '.mp4'))
+    elif args.folder:
+      model_path = "/mnt/nas/share/home/tjy/mast3r_evaluate/evaluate_data/model_output/drivetrack/"
+      gt_path = "/mnt/nas/share/home/tjy/mast3r_evaluate/evaluate_data/tapvid_datasets/drivetrack/"
+      output_path = "/mnt/nas/share/home/tjy/mast3r_evaluate/evaluate_data/tracks/"
+      files = glob.glob(os.path.join(model_path, '**', '*.npz'), recursive=True)
+      already_have_tracks = glob.glob(os.path.join(output_path, '**', '*'), recursive=True)
+      for file in files:
+        file_base = os.path.splitext(file)[0]
+        file_name = os.path.basename(file_base)
+        if file_name + "_model"  + '.mp4' in already_have_tracks:
+          continue
+        show_tracks(os.path.join(model_path, file_name + '.npz'), os.path.join(output_path, file_name + "_model"  + '.mp4'))
+        if file_name + "_gt"  + '.mp4' in already_have_tracks:
+          continue
+        show_tracks(os.path.join(gt_path, file_name + '.npz'), os.path.join(output_path, file_name + "_gt"  + '.mp4'))
+      
+    else:
+      show_tracks(args.file_path, args.output_path)
+  

@@ -234,8 +234,10 @@ def check_mast3r_output(input_path, output_path):
         for i in range(pts2.shape[0]):
             fx = (x_coords + 1 - cx) / (pts2[i, :, :, 0] / (pts2[i, :, :, 2] + 1e-8))
             fy = (y_coords + 1 - cy) / (pts2[i, :, :, 1] / (pts2[i, :, :, 2] + 1e-8))
-            total_fx += fx.nanmean().float() 
-            total_fy += fy.nanmean().float()
+            if np.isinf(fy.nanmedian()) or np.isinf(fx.nanmedian()):
+                print('inf')
+            total_fx += fx.nanmedian().float() 
+            total_fy += fy.nanmedian().float()
                 
                     
     intrinsics_params = [

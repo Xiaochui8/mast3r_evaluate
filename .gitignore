@@ -133,3 +133,4 @@ dmypy.json
 checkpoints/
 output/
 evaluate_data/
+nohup.out
