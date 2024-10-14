@@ -27,8 +27,8 @@ from PIL import Image
 from evaluate import metrics
 from evaluate import tapvid3d_splits
 import tqdm
+import argparse
 import glob
-
 
 _TAPVID3D_DIR = flags.DEFINE_string(
     'tapvid3d_dir',
@@ -260,58 +260,69 @@ def evaluate_data_source(
   return avg_metrics
 
 
-def run_evaluate_origin(argv: Sequence[str]):
-  metrics_all_sources = []
-  for data_source in _DATA_SOURCES_TO_EVALUATE.value:
-    if _USE_MINIVAL.value:
-      all_npz_files = tapvid3d_splits.get_minival_files(subset=data_source)
-    else:
-      all_npz_files = tapvid3d_splits.get_full_eval_files(subset=data_source)
-    source_gt_dir = os.path.join(_TAPVID3D_DIR.value, data_source)
-    source_pred_dir = os.path.join(_TAPVID3D_PREDICTIONS.value, data_source)
-    source_metrics = evaluate_data_source(
-        npz_filenames=all_npz_files,
-        ground_truth_dir=source_gt_dir,
-        predictions_dir=source_pred_dir,
-        depth_scalings=_DEPTH_SCALINGS.value,
+def main(gt_file, prediction_file) -> None:
+    with open(gt_file, 'rb') as in_f:
+        in_npz = np.load(in_f, allow_pickle=True)
+        images_jpeg_bytes = in_npz['images_jpeg_bytes']
+        queries_xyt = in_npz['queries_xyt']
+        tracks_xyz = in_npz['tracks_XYZ']
+        visibles = in_npz['visibility']
+        intrinsics_params = in_npz['fx_fy_cx_cy']
+
+    
+    video_height, video_width = get_jpeg_byte_hw(images_jpeg_bytes[0])
+    metric_eval_resolution = 256
+    smallest_side_length = metric_eval_resolution
+    (_, _), scaling_factor = (
+        get_new_hw_with_given_smallest_side_length(
+            orig_height=video_height,
+            orig_width=video_width,
+            smallest_side_length=smallest_side_length,
+        )
     )
-    metrics_all_sources.append(source_metrics)
-    logging.info('Metrics for data source %s', data_source)
-    logging.info(source_metrics)
+    intrinsics_params_resized = intrinsics_params * scaling_factor
 
-  avg_metrics = get_average_over_metrics(metrics_all_sources)
+    
+    
+    with open(prediction_file, 'rb') as in_f:
+        predictor_data = np.load(in_f, allow_pickle=True)
+        predicted_tracks_xyz = predictor_data['tracks_XYZ']
+        predicted_visibility = predictor_data['visibility']
 
-  logging.info('Metrics, averaged across all data sources:')
-  logging.info(avg_metrics)
+    
 
-  logging.info('Finished computing metrics!')
+    video_metrics = {}
+    depth_scaling = 'median'
+    metrics_all_videos = []
 
-def run_evaluate_short_time(argv: Sequence[str]):
-  metrics_all_sources = []
-  for data_source in _DATA_SOURCES_TO_EVALUATE.value:
-    source_gt_dir = os.path.join(_TAPVID3D_DIR.value, data_source + '_short_time')
-    source_pred_dir = os.path.join(_TAPVID3D_PREDICTIONS.value, data_source + '_short_time')
-    all_npz_files = glob.glob(os.path.join(source_pred_dir, '**', '*'), recursive=True)
-    all_npz_files = [os.path.basename(f) for f in all_npz_files]
-    source_metrics = evaluate_data_source(
-        npz_filenames=all_npz_files,
-        ground_truth_dir=source_gt_dir,
-        predictions_dir=source_pred_dir,
-        depth_scalings=_DEPTH_SCALINGS.value,
+    metrics_for_scale = metrics.compute_tapvid3d_metrics(
+        gt_occluded=np.logical_not(visibles),
+        gt_tracks=tracks_xyz,
+        pred_occluded=np.logical_not(predicted_visibility),
+        pred_tracks=predicted_tracks_xyz,
+        intrinsics_params=intrinsics_params_resized,
+        scaling=depth_scaling,
+        query_points=queries_xyt[..., ::-1],
+        order='t n',
     )
-    metrics_all_sources.append(source_metrics)
-    logging.info('Metrics for data source %s', data_source)
-    logging.info(source_metrics)
+    video_metrics[depth_scaling] = metrics_for_scale
+    metrics_all_videos.append(video_metrics)
 
-  avg_metrics = get_average_over_metrics(metrics_all_sources)
 
-  logging.info('Metrics, averaged across all data sources:')
-  logging.info(avg_metrics)
 
-def main(argv: Sequence[str]) -> None:
-  run_evaluate_short_time(argv)
-  
+    avg_metrics = get_average_over_metrics(metrics_all_videos)
+
+
+    print('Metrics, averaged across all data sources:')
+    print(avg_metrics)
+
+    print('Finished computing metrics!')
 
 
 if __name__ == '__main__':
-  app.run(main)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--gt_file', type=str)
+    parser.add_argument('--prediction_file', type=str)
+    args = parser.parse_args()
+    
+    main(args.gt_file, args.prediction_file)

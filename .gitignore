@@ -134,3 +134,4 @@ checkpoints/
 output/
 evaluate_data/
 nohup.out
+tmp/

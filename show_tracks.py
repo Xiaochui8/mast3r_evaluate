@@ -333,13 +333,13 @@ if __name__ == '__main__':
    
       
     if args.pairwise:
-      model_path = "/mnt/nas/share/home/tjy/mast3r_evaluate/evaluate_data/model_output/drivetrack/"
-      gt_path = "/mnt/nas/share/home/tjy/mast3r_evaluate/evaluate_data/tapvid_datasets/drivetrack/"
+      model_path = "/mnt/nas/share/home/tjy/mast3r_evaluate/evaluate_data/model_output/drivetrack_short_time/"
+      gt_path = "/mnt/nas/share/home/tjy/mast3r_evaluate/evaluate_data/tapvid_datasets/drivetrack_short_time/"
       output_path = "/mnt/nas/share/home/tjy/mast3r_evaluate/evaluate_data/tracks/"
       show_tracks(os.path.join(model_path, args.file_path + '.npz'), os.path.join(output_path, "model_" + args.file_path + '.mp4'))
       show_tracks(os.path.join(gt_path, args.file_path + '.npz'), os.path.join(output_path, "gt_" + args.file_path + '.mp4'))
     elif args.folder:
-      model_path = "/mnt/nas/share/home/tjy/mast3r_evaluate/evaluate_data/model_output/drivetrack/"
+      model_path = "/mnt/nas/share/home/tjy/SpaTracker/data/model_output/drivetrack/"
       gt_path = "/mnt/nas/share/home/tjy/mast3r_evaluate/evaluate_data/tapvid_datasets/drivetrack/"
       output_path = "/mnt/nas/share/home/tjy/mast3r_evaluate/evaluate_data/tracks/"
       files = glob.glob(os.path.join(model_path, '**', '*.npz'), recursive=True)

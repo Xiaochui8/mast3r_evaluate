@@ -138,21 +138,38 @@
             "console": "integratedTerminal",
             "justMyCode": false,
             "args": [
-                "--tapvid3d_dir", "/mnt/nas/share/home/tjy/mast3r_evaluate/evaluate_data/model_output/",
-                "--tapvid3d_predictions", "/mnt/nas/share/home/tjy/mast3r_evaluate/evaluate_data/tapvid_datasets/",
+                "--tapvid3d_dir", "/mnt/nas/share/home/tjy/mast3r_evaluate/evaluate_data/tapvid_datasets/",
+                "--tapvid3d_predictions", "/mnt/nas/share/home/tjy/mast3r_evaluate/evaluate_data/model_output/",
                 "--use_minival", "True",
                 "--data_sources_to_evaluate", "drivetrack",
             ]
         },
         {
-            "name": "test import",
+            "name": "evaluate single file",
             "type": "debugpy",
             "request": "launch",
             "python": "/home/tjy/anaconda3/envs/mast3r/bin/python",
-            "program": "${workspaceFolder}/test_import.py",
+            "program": "${workspaceFolder}/evaluate_single_file.py",
             "console": "integratedTerminal",
             "justMyCode": false,
-        
+            "args": [
+                "--gt_file", "/mnt/nas/share/home/tjy/mast3r_evaluate/evaluate_data/model_output/drivetrack/tapvid3d_11967272535264406807_580_000_600_000_2_y5T1W9Gwcqsnzuc4pqX8Fw.npz",
+                "--prediction_file", "/mnt/nas/share/home/tjy/mast3r_evaluate/evaluate_data/model_output/drivetrack/tapvid3d_11967272535264406807_580_000_600_000_2_y5T1W9Gwcqsnzuc4pqX8Fw.npz",
+            ]
+        },
+        {
+            "name": "filter short time data",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "/home/tjy/anaconda3/envs/mast3r/bin/python",
+            "program": "${workspaceFolder}/data_processer/filter_short_time.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--input_dir", "/mnt/nas/share/home/tjy/mast3r_evaluate/evaluate_data/tapvid_datasets/drivetrack/",
+                "--output_dir", "/mnt/nas/share/home/tjy/mast3r_evaluate/evaluate_data/tapvid_datasets/drivetrack_short_time/",
+                "--threshold_frames", "100",
+            ],
+            "justMyCode": false,
         }
     ]
 }
