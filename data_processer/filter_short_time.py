@@ -10,7 +10,8 @@ def filter_short_time(input_path, output_path, threshold_frames):
         in_npz = np.load(in_f, allow_pickle=True)
         images_jpeg_bytes = in_npz['images_jpeg_bytes']
     
-    if(len(images_jpeg_bytes) < threshold_frames):
+    print(len(images_jpeg_bytes))
+    if(len(images_jpeg_bytes) <= threshold_frames):
         shutil.copyfile(input_path, output_path)
 
 def main(args):

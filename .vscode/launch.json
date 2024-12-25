@@ -5,7 +5,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "demo mast3r",
+            "name": "236: demo mast3r",
             "type": "debugpy",
             "request": "launch",
             "python": "/home/tjy/anaconda3/envs/mast3r/bin/python",
@@ -20,52 +20,22 @@
             }
         },
         {
-            "name": "demo dust3r",
+            "name": "236: demo dust3r",
             "type": "debugpy",
             "request": "launch",
             "python": "/home/tjy/anaconda3/envs/mast3r/bin/python",
             "program": "${workspaceFolder}/dust3r/demo.py",
             "args": [
                 //"--model_name", "MASt3R_ViTLarge_BaseDecoder_512_catmlpdpt_metric",
-                "--weights", "dust3r/checkpoints/DUSt3R_ViTLarge_BaseDecoder_512_dpt.pth",
+                "--weights", "checkpoints/MASt3R_ViTLarge_BaseDecoder_512_catmlpdpt_metric.pth",
             ],
             "console": "integratedTerminal",
             "env": {
                 "CUDA_VISIBLE_DEVICES": "0"
             }
-        },
+        },        
         {
-            "name": "test mast3r",
-            "type": "debugpy",
-            "request": "launch",
-            "python": "/home/tjy/anaconda3/envs/mast3r/bin/python",
-            "program": "${workspaceFolder}/test_mast3r.py",
-            "console": "integratedTerminal",
-            "env": {
-                "CUDA_VISIBLE_DEVICES": "6"
-            },
-            "justMyCode": false,
-            "args": [
-                "--input_path", "/mnt/nas/share/home/tjy/mast3r_evaluate/evaluate_data/tapvid_datasets/drivetrack/tapvid3d_33101359476901423_6720_910_6740_910_3_JNFn13if2djGYt0wQ682cw.npz",
-                "--output_path", "/mnt/nas/share/home/tjy/mast3r_evaluate/output/prediction.npz",
-            ]
-        },
-        {
-            "name": "get simple data",
-            "type": "debugpy",
-            "request": "launch",
-            "python": "/home/tjy/anaconda3/envs/mast3r/bin/python",
-            "program": "${workspaceFolder}/get_simple_data.py",
-            "console": "integratedTerminal",
-            "justMyCode": false,
-            "args": [
-                "--input_path", "/mnt/nas/share/home/tjy/mast3r_evaluate/data/drivetrack_example.npz",
-                "--output_path", "/mnt/nas/share/home/tjy/mast3r_evaluate/data/drivetrack_example_simple.npz",
-                "--number", "10",
-            ]
-        },
-        {
-            "name": "show prediction tracks",
+            "name": "236: show prediction tracks",
             "type": "debugpy",
             "request": "launch",
             "python": "/home/tjy/anaconda3/envs/mast3r/bin/python",
@@ -78,7 +48,7 @@
             ]
         },
         {
-            "name": "show tracks",
+            "name": "236: show tracks",
             "type": "debugpy",
             "request": "launch",
             "python": "/home/tjy/anaconda3/envs/mast3r/bin/python",
@@ -91,7 +61,7 @@
             ]
         },
         {
-            "name": "show raw tracks",
+            "name": "236: show raw tracks",
             "type": "debugpy",
             "request": "launch",
             "python": "/home/tjy/anaconda3/envs/mast3r/bin/python",
@@ -104,19 +74,7 @@
             ]
         },
         {
-            "name": "show tracks in folder",
-            "type": "debugpy",
-            "request": "launch",
-            "python": "/home/tjy/anaconda3/envs/mast3r/bin/python",
-            "program": "${workspaceFolder}/show_tracks.py",
-            "console": "integratedTerminal",
-            "justMyCode": false,
-            "args": [
-                "--folder", "True",
-            ]
-        },
-        {
-            "name": "run mast3r evaluate",
+            "name": "236: run mast3r evaluate",
             "type": "debugpy",
             "request": "launch",
             "python": "/home/tjy/anaconda3/envs/mast3r/bin/python",
@@ -130,7 +88,160 @@
             ]
         },
         {
-            "name": "evaluate mast3r_output",
+            "name": "236: evaluate single file",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "/home/tjy/anaconda3/envs/mast3r/bin/python",
+            "program": "${workspaceFolder}/evaluate_single_file.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "--gt_file", "/mnt/nas/share/home/tjy/mast3r_evaluate/evaluate_data/model_output/mast3r/drivetrack/tapvid3d_11967272535264406807_580_000_600_000_2_y5T1W9Gwcqsnzuc4pqX8Fw.npz",
+                "--prediction_file", "/mnt/nas/share/home/tjy/mast3r_evaluate/evaluate_data/model_output/mast3r/drivetrack/tapvid3d_11967272535264406807_580_000_600_000_2_y5T1W9Gwcqsnzuc4pqX8Fw.npz",
+            ]
+        },
+        {
+            "name": "236: filter short time data",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "/home/tjy/anaconda3/envs/mast3r/bin/python",
+            "program": "${workspaceFolder}/data_processer/filter_short_time.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--input_dir", "/mnt/nas/share/home/tjy/mast3r_evaluate/evaluate_data/tapvid_datasets/adt/",
+                "--output_dir", "/mnt/nas/share/home/tjy/mast3r_evaluate/evaluate_data/tapvid_datasets/adt_short_time",
+                "--threshold_frames", "100",
+            ],
+            "justMyCode": false,
+        },
+        {
+            "name": "228: run mast3r evaluate",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "/home/zhy/.pyenv/versions/miniconda3-latest/envs/mast3r/bin/python",
+            "program": "${workspaceFolder}/run_mast3r.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "--input_path", "/mnt/nas/share/home/tjy/mast3r_evaluate/evaluate_data/tapvid_datasets/pstudio",
+                "--output_path", "/mnt/nas/share/home/tjy/mast3r_evaluate/evaluate_data/model_output/mast3r/pstudio",
+                "--device", "cuda",
+            ],
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "0"
+            }
+        },
+        {
+            "name": "228: evaluate mast3r",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "/home/zhy/.pyenv/versions/miniconda3-latest/envs/mast3r/bin/python",
+            "program": "${workspaceFolder}/evaluate_3r_model.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "--model_name", "mast3r",
+                "--weights", "/mnt/nas/share/home/tjy/mast3r_evaluate/checkpoints/MASt3R_ViTLarge_BaseDecoder_512_catmlpdpt_metric.pth",
+                "--input_path", "/mnt/nas/share/home/tjy/mast3r_evaluate/evaluate_data/tapvid_datasets/",
+                "--output_path", "/mnt/nas/share/home/tjy/mast3r_evaluate/evaluate_data/model_output/",
+                "--dataset", "drivetrack_pair adt_pair pstudio_pair",
+                "--device", "cuda:0",
+            ],
+        },
+        {
+            "name": "228: evaluate monst3r",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "/home/zhy/.pyenv/versions/miniconda3-latest/envs/mast3r/bin/python",
+            "program": "${workspaceFolder}/evaluate_3r_model.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "--model_name", "monst3r",
+                "--weights", "/mnt/nas/share/home/tjy/monst3r/checkpoints/MonST3R_PO-TA-S-W_ViTLarge_BaseDecoder_512_dpt.pth",
+                "--input_path", "/mnt/nas/share/home/tjy/mast3r_evaluate/evaluate_data/tapvid_datasets/",
+                "--output_path", "/mnt/nas/share/home/tjy/mast3r_evaluate/evaluate_data/model_output/",
+                "--dataset", "drivetrack_pair adt_pair pstudio_pair",
+                "--device", "cuda:0",
+            ],
+        },
+        {
+            "name": "228: mast3r matching",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "/home/zhy/.pyenv/versions/miniconda3-latest/envs/mast3r/bin/python",
+            "program": "${workspaceFolder}/mast3r_matching.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "env":{
+                "CUDA_VISIBLE_DEVICES": "0",
+            }
+        },
+        {
+            "name": "228: check",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "/home/zhy/.pyenv/versions/miniconda3-latest/envs/mast3r/bin/python",
+            "program": "${workspaceFolder}/check.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "env":{
+                "CUDA_VISIBLE_DEVICES": "0",
+            }
+        },
+        {
+            "name": "236: evaluate dust3r",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "/home/tjy/anaconda3/envs/mast3r/bin/python",
+            "program": "${workspaceFolder}/evaluate_3r_model.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "--model_name", "dust3r",
+                "--weights", "/mnt/nas/share/home/tjy/dust3r/checkpoints/DUSt3R_ViTLarge_BaseDecoder_512_linear.pth",
+                "--input_path", "/mnt/nas/share/home/tjy/mast3r_evaluate/evaluate_data/tapvid_datasets/",
+                "--output_path", "/mnt/nas/share/home/tjy/mast3r_evaluate/evaluate_data/model_output/",
+                "--dataset", "drivetrack_seq,adt_seq,pstudio_seq",
+                "--device", "cuda:1",
+            ],
+        },
+        {
+            "name": "236: evaluate mast3r",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "/home/tjy/anaconda3/envs/mast3r/bin/python",
+            "program": "${workspaceFolder}/evaluate_3r_model.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "--model_name", "mast3r",
+                "--weights", "/mnt/nas/share/home/tjy/mast3r_evaluate/checkpoints/MASt3R_ViTLarge_BaseDecoder_512_catmlpdpt_metric.pth",
+                "--input_path", "/mnt/nas/share/home/tjy/mast3r_evaluate/evaluate_data/tapvid_datasets/",
+                "--output_path", "/mnt/nas/share/home/tjy/mast3r_evaluate/evaluate_data/model_output/",
+                "--dataset", "drivetrack_seq,adt_seq,pstudio_seq",
+                "--device", "cuda:3",
+            ],
+        },
+        {
+            "name": "236: evaluate monst3r",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "/home/tjy/anaconda3/envs/mast3r/bin/python",
+            "program": "${workspaceFolder}/evaluate_3r_model.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "--model_name", "monst3r",
+                "--weights", "/mnt/nas/share/home/tjy/monst3r/checkpoints/MonST3R_PO-TA-S-W_ViTLarge_BaseDecoder_512_dpt.pth",
+                "--input_path", "/mnt/nas/share/home/tjy/mast3r_evaluate/evaluate_data/tapvid_datasets/",
+                "--output_path", "/mnt/nas/share/home/tjy/mast3r_evaluate/evaluate_data/model_output/",
+                "--dataset", "drivetrack_seq,adt_seq,pstudio_seq",
+                "--device", "cuda:3",
+            ],
+        },
+        {
+            "name": "236: evaluate model output",
             "type": "debugpy",
             "request": "launch",
             "python": "/home/tjy/anaconda3/envs/mast3r/bin/python",
@@ -139,36 +250,87 @@
             "justMyCode": false,
             "args": [
                 "--tapvid3d_dir", "/mnt/nas/share/home/tjy/mast3r_evaluate/evaluate_data/tapvid_datasets/",
-                "--tapvid3d_predictions", "/mnt/nas/share/home/tjy/mast3r_evaluate/evaluate_data/model_output/",
+                "--tapvid3d_predictions", "/mnt/nas/share/home/tjy/mast3r_evaluate/evaluate_data/model_output/ours/",
                 "--use_minival", "True",
-                "--data_sources_to_evaluate", "drivetrack",
+                "--data_sources_to_evaluate", "pstudio_seq",
             ]
         },
         {
-            "name": "evaluate single file",
+            "name": "236: show tracks in folder",
             "type": "debugpy",
             "request": "launch",
             "python": "/home/tjy/anaconda3/envs/mast3r/bin/python",
-            "program": "${workspaceFolder}/evaluate_single_file.py",
+            "program": "${workspaceFolder}/show_tracks.py",
             "console": "integratedTerminal",
             "justMyCode": false,
             "args": [
-                "--gt_file", "/mnt/nas/share/home/tjy/mast3r_evaluate/evaluate_data/model_output/drivetrack/tapvid3d_11967272535264406807_580_000_600_000_2_y5T1W9Gwcqsnzuc4pqX8Fw.npz",
-                "--prediction_file", "/mnt/nas/share/home/tjy/mast3r_evaluate/evaluate_data/model_output/drivetrack/tapvid3d_11967272535264406807_580_000_600_000_2_y5T1W9Gwcqsnzuc4pqX8Fw.npz",
+                "--folder", "True",
             ]
         },
         {
-            "name": "filter short time data",
+            "name": "236: get simple data",
             "type": "debugpy",
             "request": "launch",
             "python": "/home/tjy/anaconda3/envs/mast3r/bin/python",
-            "program": "${workspaceFolder}/data_processer/filter_short_time.py",
+            "program": "${workspaceFolder}/get_simple_data.py",
             "console": "integratedTerminal",
+            "justMyCode": false,
             "args": [
-                "--input_dir", "/mnt/nas/share/home/tjy/mast3r_evaluate/evaluate_data/tapvid_datasets/drivetrack/",
-                "--output_dir", "/mnt/nas/share/home/tjy/mast3r_evaluate/evaluate_data/tapvid_datasets/drivetrack_short_time/",
-                "--threshold_frames", "100",
+                "--input_path", "/mnt/nas/share/home/tjy/mast3r_evaluate/evaluate_data/tapvid_datasets",
+                "--output_path", "/mnt/nas/share/home/tjy/mast3r_evaluate/evaluate_data/tapvid_datasets",
+                "--dataset", "drivetrack adt pstudio",
+            ]
+        },
+        {
+            "name": "236: get visual data",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "/home/tjy/anaconda3/envs/mast3r/bin/python",
+            "program": "${workspaceFolder}/get_visulize_data.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+        },
+        {
+            "name": "236: visual mast3r",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "/home/tjy/anaconda3/envs/mast3r/bin/python",
+            "program": "${workspaceFolder}/visual_3r_model.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "--model_name", "mast3r",
+                "--weights", "/mnt/nas/share/home/tjy/mast3r_evaluate/checkpoints/MASt3R_ViTLarge_BaseDecoder_512_catmlpdpt_metric.pth",
+                "--input_path", "/mnt/nas/share/home/tjy/mast3r_evaluate/evaluate_data/tapvid_datasets/",
+                "--output_path", "/mnt/nas/share/home/tjy/mast3r_evaluate/evaluate_data/model_output/",
+                "--dataset", "visual",
+                "--device", "cuda:0",
             ],
+        },
+        {
+            "name": "236: visual monst3r",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "/home/tjy/anaconda3/envs/mast3r/bin/python",
+            "program": "${workspaceFolder}/visual_3r_model.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "--model_name", "monst3r",
+                "--weights", "/mnt/nas/share/home/tjy/monst3r/checkpoints/MonST3R_PO-TA-S-W_ViTLarge_BaseDecoder_512_dpt.pth",
+                "--input_path", "/mnt/nas/share/home/tjy/mast3r_evaluate/evaluate_data/tapvid_datasets/",
+                "--output_path", "/mnt/nas/share/home/tjy/mast3r_evaluate/evaluate_data/model_output/",
+                "--dataset", "visual",
+                "--device", "cuda:0",
+            ],
+        },
+        {
+            "name": "236: visualize",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "/home/tjy/anaconda3/envs/mast3r/bin/python",
+            "program": "${workspaceFolder}/show_tracks.py",
+            "console": "integratedTerminal",
             "justMyCode": false,
         }
     ]

@@ -1,4 +1,5 @@
 from mast3r.model import AsymmetricMASt3R
+from dust3r.model import AsymmetricCroCo3DStereo
 from dust3r.inference import inference
 
 import tqdm
@@ -17,7 +18,7 @@ import glob
 
 ImgNorm = tvf.Compose([tvf.ToTensor(), tvf.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
 
-def get_image_pairs(images_jpeg_bytes, query_idx, size=512, save_imgs=False, factor = 16):
+def get_image_pairs(images_jpeg_bytes, query_idx, size=512, save_imgs=True, factor = 16):
     imgs = []
     img_pairs = np.empty((len(images_jpeg_bytes), len(query_idx)), dtype=tuple)
     idx = 0
@@ -48,7 +49,7 @@ def get_image_pairs(images_jpeg_bytes, query_idx, size=512, save_imgs=False, fac
             [img.size[::-1]]), idx=len(imgs), instance=str(len(imgs))))
         
         if save_imgs:
-            img.save('output/image' + str(idx) + '.png')
+            img.save('tmp/image' + str(idx) + '.png')
         
         if(idx == 1):
             origin_shape = (W1, H1)
@@ -94,23 +95,31 @@ def interpolate_at_xy(pts, x, y):
 
 
 
-def get_mast3r_output_single_folder(input_path, output_path, device = 'cuda'):
-    weights_path = "checkpoints/MASt3R_ViTLarge_BaseDecoder_512_catmlpdpt_metric.pth"
-    model = AsymmetricMASt3R.from_pretrained(weights_path).to(device)
+def get_mast3r_output_single_folder(model_name, weights_path, datasets, input_path, output_path, device = 'cuda'): 
+    if model_name == 'mast3r':
+        model = AsymmetricMASt3R.from_pretrained(weights_path).to(device)
+    elif model_name == 'monst3r':
+        model = AsymmetricCroCo3DStereo.from_pretrained(weights_path).to(device)
+    elif model_name == 'ours':
+        model = AsymmetricMASt3R.from_pretrained(weights_path).to(device)
     
-    already_processed = glob.glob(os.path.join(output_path, '**', '*'), recursive=True)
-    already_processed = [os.path.basename(f) for f in already_processed]
-    
-    files = glob.glob(os.path.join(input_path, '**', '*'), recursive=True)
-    files = [os.path.basename(f) for f in files]
-    
-    for file in tqdm.tqdm(files):
-        if file in already_processed:
-            print('already processed', file)
-            continue
+    for dataset in datasets:
         
-        print('processing', file)
-        get_mast3r_output_single_file(model, os.path.join(input_path, file), os.path.join(output_path, file), device)
+        print('processing dataset', dataset)
+        
+        already_processed = glob.glob(os.path.join(output_path, dataset, '**', '*'), recursive=True)
+        already_processed = [os.path.basename(f) for f in already_processed]
+        files = glob.glob(os.path.join(input_path, dataset, '**', '*'), recursive=True)
+        files = [os.path.basename(f) for f in files]
+        for file in tqdm.tqdm(files):
+            # if file in already_processed:
+            #     print('already processed', file)
+            #     continue
+            
+            print('processing', file)
+            
+            get_mast3r_output_single_file(model, os.path.join(input_path, dataset, file), os.path.join(output_path, dataset, file), device)
+            
     
     
     
@@ -121,10 +130,7 @@ def get_mast3r_output_single_file(model, input_path, output_path, device = 'cuda
         in_npz = np.load(in_f, allow_pickle=True)
         images_jpeg_bytes = in_npz['images_jpeg_bytes']
         queries_xyt = in_npz['queries_xyt'] # n, 3
-        tracks_xyz = in_npz['tracks_XYZ'] #t, n, 3
-        visibles = in_npz['visibility']
-        intrinsics_params = in_npz['fx_fy_cx_cy']
-        gt_tracks = in_npz['tracks_XYZ']
+        
     
     query_time = queries_xyt[:, 2] # from indx to time
     query_idx = list(set(int(idx) for idx in queries_xyt[:, 2])) # possible query time
@@ -132,17 +138,17 @@ def get_mast3r_output_single_file(model, input_path, output_path, device = 'cuda
     image_pairs, origin_shape, current_shape, t = get_image_pairs(images_jpeg_bytes, query_idx)
 
     print('image pairs : ', image_pairs.size)
-    
+
     # turn to the data for TAPVid3D
-    prediction_tracks_xyz = np.zeros_like(tracks_xyz)
-    prediction_visibles = np.zeros_like(visibles)
+    prediction_tracks_xyz = np.zeros((t, queries_xyt.shape[0], 3))
+    prediction_visibles = np.ones((t, queries_xyt.shape[0]))
     total_fx, total_fy = 0, 0
     cx, cy = current_shape[0] / 2, current_shape[1] / 2
     x_coords, y_coords = np.meshgrid(np.arange(current_shape[0]), np.arange(current_shape[1]), indexing='xy')  
     
     for current_query_idx in tqdm.trange(len(query_idx)):
         current_query_time = query_idx[current_query_idx]
-        output = inference(list(image_pairs[:, current_query_idx]), model, device, batch_size=32, verbose=False)
+        output = inference(list(image_pairs[:, current_query_idx]), model, device, batch_size=24, verbose=False)
 
         # at this stage, you have the raw dust3r predictions
         _, pred1 = output['view1'], output['pred1']
@@ -170,19 +176,20 @@ def get_mast3r_output_single_file(model, input_path, output_path, device = 'cuda
                 
                     
     intrinsics_params = [
-                    total_fx /(t * len(query_idx)) * origin_shape[0] / current_shape[0],
-                    total_fy /(t * len(query_idx)) * origin_shape[1] / current_shape[1],
+                    (total_fx /(t * len(query_idx)) * origin_shape[0] / current_shape[0]).item(),
+                    (total_fy /(t * len(query_idx)) * origin_shape[1] / current_shape[1]).item(),
                     cx * origin_shape[0] / current_shape[0],
                     cy * origin_shape[1] / current_shape[1],
                 ]
-        
-    gt_tracks_norm_factor = np.median(np.linalg.norm(gt_tracks, axis = -1),axis = -1)
-    tracks_norm_factor = np.median(np.linalg.norm(prediction_tracks_xyz, axis = -1),axis = -1)
-    prediction_tracks_xyz = prediction_tracks_xyz * gt_tracks_norm_factor.reshape(-1, 1, 1) / tracks_norm_factor.reshape(-1, 1, 1)    
+    
+    fx, fy, cx, cy = intrinsics_params
+    u = prediction_tracks_xyz[..., 0] / prediction_tracks_xyz[..., 2] * fx + cx
+    v = prediction_tracks_xyz[..., 1] / prediction_tracks_xyz[..., 2] * fy + cy
+
 
     output = {
         'tracks_XYZ': prediction_tracks_xyz,
-        'visibility': visibles,
+        'visibility': np.ones((t, queries_xyt.shape[0])),
         'fx_fy_cx_cy': intrinsics_params,
         'images_jpeg_bytes': images_jpeg_bytes,
         'queries_xyt': queries_xyt,
@@ -193,11 +200,17 @@ def get_mast3r_output_single_file(model, input_path, output_path, device = 'cuda
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
+    parser.add_argument('--model_name', type=str)
+    parser.add_argument('--weights', type=str)
     parser.add_argument('--input_path', type=str)
     parser.add_argument('--output_path', type=str)
+    parser.add_argument('--dataset', type=str)
     parser.add_argument('--device', type=str, default='cpu')
     args = parser.parse_args()
     
-    get_mast3r_output_single_folder(args.input_path, args.output_path, args.device)
+    input_path = args.input_path
+    output_path = os.path.join(args.output_path, args.model_name)
+    datasets = args.dataset.split(',')
+    get_mast3r_output_single_folder(args.model_name, args.weights, datasets, input_path, output_path, args.device)
 
     

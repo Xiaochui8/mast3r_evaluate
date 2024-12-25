@@ -135,3 +135,4 @@ output/
 evaluate_data/
 tmp/
 *.out
+visualize_data/

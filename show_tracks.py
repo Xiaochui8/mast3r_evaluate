@@ -18,7 +18,7 @@ import mediapy as media
 import flow_vis
 import scenepic as sp
 import argparse
-
+from PIL import Image
 
 
 def project_points_to_video_frame(camera_pov_points3d, camera_intrinsics, height, width):
@@ -32,7 +32,8 @@ def project_points_to_video_frame(camera_pov_points3d, camera_intrinsics, height
   v_d = v_d * f_v + c_v
   
   # Mask of points that are in front of the camera and within image boundary
-  masks = (camera_pov_points3d[..., 2] >= 1)
+  # masks = (camera_pov_points3d[..., 2] >= 1)
+  masks = (camera_pov_points3d[..., 2] >= 0)
   masks = masks & (u_d >= 0) & (u_d < width) & (v_d >= 0) & (v_d < height)
   return np.stack([u_d, v_d], axis=-1), masks
 
@@ -282,6 +283,24 @@ def show_tracks(chosen_filename, output_path):
     visibility = gt_data['visibility']
     queries_xyt = gt_data['queries_xyt']
 
+    # 去掉一些离群的点
+    filter = False
+
+    if filter:
+        percent = 0.80  # 设置阈值百分位数
+        tracks_xyz_median = np.median(tracks_xyz, axis=1)  # 沿着第一个维度计算每个点的中位数
+        distance = np.linalg.norm(tracks_xyz - tracks_xyz_median[:, np.newaxis, :], axis=-1)  # 计算每个点与中位数的距离
+
+        # 计算每个时间步（t）的最大距离，并设置一个阈值为该时间步的距离百分位数
+        threshold = np.percentile(distance, percent * 100, axis=1)
+
+        # 创建一个布尔数组，表示是否是离群点
+        is_outlier = distance > threshold[:, np.newaxis]
+
+        # 根据 is_outlier 过滤掉离群点
+        tracks_xyz = np.where(is_outlier[..., np.newaxis], np.nan, tracks_xyz)  
+    
+    
     print(f"In example {chosen_filename}:")
     print(f"  images_jpeg_bytes: {len(gt_data['images_jpeg_bytes'])} frames, each stored as JPEG bytes (and after decoding, the video shape: {video.shape})")
     print(f"  intrinsics: (fx, fy, cx, cy)={intrinsics}")
@@ -311,6 +330,16 @@ def show_tracks(chosen_filename, output_path):
     tracks_xy, infront_cameras = project_points_to_video_frame(tracks_xyz, intrinsics, video.shape[1], video.shape[2])
     print(f"  tracks_xy: {tracks_xy.shape}")
     print(f"  infront_cameras: {infront_cameras.shape}")
+    if infront_cameras.sum() == 0:
+        print('************* no points in front of the camera *************')
+        return
+    
+    
+        
+
+
+
+
 
     video2d_viz = plot_2d_tracks(video, tracks_xy, visibility, infront_cameras, show_occ=True)
     
@@ -318,8 +347,40 @@ def show_tracks(chosen_filename, output_path):
     
     video2d_viz = media.resize_video(video2d_viz, (480, 640))
     video3d_viz = media.resize_video(video3d_viz, (480, 640))
-
     
+    # 储存2D的视频成图片
+    save_image = False
+    if save_image:
+      if 'SpatialTracker' in output_path:
+        image = Image.fromarray(video2d_viz[0])
+        image.save(os.path.join(output_path, '2d.jpg'))
+        for i in range(video.shape[0]):
+          image = Image.fromarray(video[i])
+          image.save(os.path.join(output_path, f'frame_{i}.jpg')) 
+      # for i in range(video2d_viz.shape[0]):
+      #   image = Image.fromarray(video2d_viz[i])
+        # image.save(f"/mnt/nas/share/home/tjy/mast3r_evaluate/visualize_data/visual_output/ours/visual1/2d_{i}.jpg")
+        # cv2.imwrite(f"/mnt/nas/share/home/tjy/mast3r_evaluate/visualize_data/visual_output/2d/{i}.jpg", video2d_viz[i])
+      import io
+
+      for i in range(len(gt_data['images_jpeg_bytes'])):
+        frame_bytes = gt_data['images_jpeg_bytes'][i]
+        img = Image.open(io.BytesIO(frame_bytes)).convert('RGB')
+        img.save(os.path.join('/mnt/nas/share/home/tjy/mast3r_evaluate/visualize_data/visual_output/teaser', f'frame_{i}.jpg'))
+      
+      for i in range(video3d_viz.shape[0]):
+        image = Image.fromarray(video3d_viz[i])
+        image.save(os.path.join('/mnt/nas/share/home/tjy/mast3r_evaluate/visualize_data/visual_output/teaser',f'3d_{i}.jpg'))
+        # cv2.imwrite(f"/mnt/nas/share/home/tjy/mast3r_evaluate/visualize_data/visual_output/3d/{i}.jpg", video3d_viz[i])
+        
+        
+        
+      return
+    
+    
+    
+
+
     media.write_video(output_path, np.concatenate([video2d_viz, video3d_viz], axis=2),  fps=1)
 
 if __name__ == '__main__':
@@ -339,21 +400,49 @@ if __name__ == '__main__':
       show_tracks(os.path.join(model_path, args.file_path + '.npz'), os.path.join(output_path, "model_" + args.file_path + '.mp4'))
       show_tracks(os.path.join(gt_path, args.file_path + '.npz'), os.path.join(output_path, "gt_" + args.file_path + '.mp4'))
     elif args.folder:
-      model_path = "/mnt/nas/share/home/tjy/SpaTracker/data/model_output/drivetrack/"
-      gt_path = "/mnt/nas/share/home/tjy/mast3r_evaluate/evaluate_data/tapvid_datasets/drivetrack/"
+      model_name = "ours"
+      dataset = "visual"
+      model_path = "/mnt/nas/share/home/tjy/mast3r_evaluate/evaluate_data/model_output/"
+      model_path = os.path.join(model_path, model_name, dataset)
+      gt_path = "/mnt/nas/share/home/tjy/mast3r_evaluate/evaluate_data/tapvid_datasets"
+      gt_path = os.path.join(gt_path, dataset)
       output_path = "/mnt/nas/share/home/tjy/mast3r_evaluate/evaluate_data/tracks/"
+      output_path = os.path.join(output_path, model_name, dataset)
       files = glob.glob(os.path.join(model_path, '**', '*.npz'), recursive=True)
       already_have_tracks = glob.glob(os.path.join(output_path, '**', '*'), recursive=True)
+
       for file in files:
         file_base = os.path.splitext(file)[0]
         file_name = os.path.basename(file_base)
         if file_name + "_model"  + '.mp4' in already_have_tracks:
           continue
         show_tracks(os.path.join(model_path, file_name + '.npz'), os.path.join(output_path, file_name + "_model"  + '.mp4'))
-        if file_name + "_gt"  + '.mp4' in already_have_tracks:
-          continue
-        show_tracks(os.path.join(gt_path, file_name + '.npz'), os.path.join(output_path, file_name + "_gt"  + '.mp4'))
+        # if file_name + "_gt"  + '.mp4' in already_have_tracks:
+        #   continue
+        # show_tracks(os.path.join(gt_path, file_name + '.npz'), os.path.join(output_path, file_name + "_gt"  + '.mp4'))
       
     else:
-      show_tracks(args.file_path, args.output_path)
-  
+      
+      file_names = {
+        'drivetrack_seq_12': [
+          'tapvid3d_5268267801500934740_2160_000_2180_000_2_ZU0XFHUBm0q8zqV8PBXuUQ',
+          'tapvid3d_5459113827443493510_380_000_400_000_2_auYuu4nr89m2SJAXhx5csQ',
+          'tapvid3d_3872781118550194423_3654_670_3674_670_2_6upUeXn7HnQBNkgQ9ZomvQ',
+        ],
+        'adt_seq_12': [
+          'Apartment_release_multiuser_party_seq134_7',
+        ]
+      }
+      
+      
+      dataset = "adt_seq_12"
+      for file_name in file_names[dataset]:
+        for model_name in ['ours', 'monst3r', 'SpatialTracker']:
+
+          model_path = "/mnt/nas/share/home/tjy/mast3r_evaluate/evaluate_data/model_output/"
+          model_path = os.path.join(model_path, model_name, dataset)
+          
+          output_path = os.path.join("/mnt/nas/share/home/tjy/mast3r_evaluate/visualize_data/visual_output", file_name, model_name)
+          if os.path.exists(output_path) == False:
+            os.makedirs(output_path)
+          show_tracks(os.path.join(model_path, file_name + '.npz'), output_path)

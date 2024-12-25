@@ -69,7 +69,7 @@ _DEPTH_SCALINGS = flags.DEFINE_list(
 
 _DATA_SOURCES_TO_EVALUATE = flags.DEFINE_list(
     'data_sources_to_evaluate',
-    ['drivetrack', 'adt', 'pstudio'],
+    ['drivetrack', 'adt', 'pstudio', 'drivetrack_pair', 'adt_pair', 'pstudio_pair', 'drivetrack_short_time'],
     'Which data source subsets to evaluate.',
 )
 
@@ -263,12 +263,14 @@ def evaluate_data_source(
 def run_evaluate_origin(argv: Sequence[str]):
   metrics_all_sources = []
   for data_source in _DATA_SOURCES_TO_EVALUATE.value:
-    if _USE_MINIVAL.value:
-      all_npz_files = tapvid3d_splits.get_minival_files(subset=data_source)
-    else:
-      all_npz_files = tapvid3d_splits.get_full_eval_files(subset=data_source)
+    # if _USE_MINIVAL.value:
+    #   all_npz_files = tapvid3d_splits.get_minival_files(subset=data_source)
+    # else:
+    #   all_npz_files = tapvid3d_splits.get_full_eval_files(subset=data_source)
     source_gt_dir = os.path.join(_TAPVID3D_DIR.value, data_source)
     source_pred_dir = os.path.join(_TAPVID3D_PREDICTIONS.value, data_source)
+    all_npz_files = glob.glob(os.path.join(source_pred_dir, '**', '*'), recursive=True)
+    all_npz_files = [os.path.basename(f) for f in all_npz_files]
     source_metrics = evaluate_data_source(
         npz_filenames=all_npz_files,
         ground_truth_dir=source_gt_dir,
@@ -293,6 +295,7 @@ def run_evaluate_short_time(argv: Sequence[str]):
     source_pred_dir = os.path.join(_TAPVID3D_PREDICTIONS.value, data_source + '_short_time')
     all_npz_files = glob.glob(os.path.join(source_pred_dir, '**', '*'), recursive=True)
     all_npz_files = [os.path.basename(f) for f in all_npz_files]
+    all_npz_files = all_npz_files[:14]
     source_metrics = evaluate_data_source(
         npz_filenames=all_npz_files,
         ground_truth_dir=source_gt_dir,
@@ -309,7 +312,7 @@ def run_evaluate_short_time(argv: Sequence[str]):
   logging.info(avg_metrics)
 
 def main(argv: Sequence[str]) -> None:
-  run_evaluate_short_time(argv)
+  run_evaluate_origin(argv)
   
 
 

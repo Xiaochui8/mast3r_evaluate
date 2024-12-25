@@ -99,6 +99,7 @@ def compute_tapvid3d_metrics(
     use_fixed_metric_threshold: bool = False,
     local_neighborhood_thresh: Optional[float] = 0.05,
     order: str = 'n t',
+    after_time = True,
 ) -> Mapping[str, np.ndarray]:
   """Computes TAP-Vid metrics (Jaccard, Pts. Within Thresh, Occ. Acc.).
 
@@ -192,6 +193,19 @@ def compute_tapvid3d_metrics(
 
   summing_axis = (-1,) if get_trackwise_metrics else (-2, -1)
   evaluation_weights = np.ones(gt_occluded.shape)
+  if after_time:
+    time = query_points[..., 0]
+    _, rows, cols = evaluation_weights.shape
+    time_expanded = np.expand_dims(time, axis=1)
+    j_range = np.arange(cols)
+    evaluation_weights[:, time_expanded > j_range] = 0.0
+    mask = evaluation_weights == 0.0
+    
+    
+    # gt_tracks = np.ma.masked_array(gt_tracks, np.repeat(np.expand_dims(1 - evaluation_weights, axis = -1), gt_tracks.shape[-1], axis = -1))
+    # pred_tracks = np.ma.masked_array(pred_tracks, np.repeat(np.expand_dims(1 - evaluation_weights, axis = -1), gt_tracks.shape[-1], axis = -1))
+    # gt_occluded = np.ma.masked_array(gt_occluded, 1 - evaluation_weights)
+    # pred_occluded = np.ma.masked_array(pred_occluded, 1 - evaluation_weights)
 
   metrics = {}
 
@@ -223,6 +237,7 @@ def compute_tapvid3d_metrics(
       )
   else:
     either_occluded = np.logical_or(gt_occluded, pred_occluded)
+    either_occluded = np.logical_or(either_occluded, mask)
     nan_mat = np.full(pred_norms.shape, np.nan)
     pred_norms = np.where(either_occluded, nan_mat, pred_norms)
     gt_norms = np.where(either_occluded, nan_mat, gt_norms)
